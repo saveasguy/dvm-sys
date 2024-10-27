@@ -1,0 +1,6 @@
+**/*.o
+bin
+.cache
+.vscode
+compile_commands.json
+platform

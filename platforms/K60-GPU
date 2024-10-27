@@ -1,0 +1,30 @@
+#For K60 (k60.kiam.ru) PLATFORM (Intel compilers with OpenMP and GPU)
+# for DVM tools
+ CC="icc -g -O2 -no-scalar-rep"
+ CXX="icpc -g -O2 -no-scalar-rep"
+ LINKER="icpc -g"
+ LLVMCONFIG="/nethome/bakhtin/CLANG/bin/llvm-config"
+# for parallel programs
+ MPIR_HOME="/common/intel/oneapi/mpi/2021.6.0"
+ MPIRUN_CMD="/common/runmvs/bin/run-impi"
+ PCC="$MPIR_HOME/bin/mpiicc -g -qopenmp"
+ PCXX="$MPIR_HOME/bin/mpiicpc -g -qopenmp"
+ PFORT="$MPIR_HOME/bin/mpiifort -g -qopenmp"
+ PLINKER="$MPIR_HOME/bin/mpiicpc -g -qopenmp"
+ PFLINKER="$MPIR_HOME/bin/mpiifort -g -qopenmp"
+ ADD_LIBS="-L/home/bakhtin/lib64"
+ CUDA_PATH="/common/cuda/"
+ NVCC="/common/cuda/bin/nvcc -g -O2 -arch=sm_70 -DHAVE_EXPLICIT_CAST -DPGI_COMPILE_BITCODE"
+# launch settings
+ dvmcopy=1
+ dvmrun="suppz.run"
+ maxtime=30
+ restart=0
+ quantum=0
+# DVMH options for default preset
+ DVMH_PPN=32
+ DVMH_NUM_THREADS=1
+ DVMH_NUM_CUDAS=0
+# machine configuration for more predefined presets
+ CPUS_PER_NODE=32
+ CUDAS_PER_NODE=4

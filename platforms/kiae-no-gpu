@@ -1,0 +1,30 @@
+#For fjord1.g4.computing.kiae.ru
+# for DVM tools
+ CC="gcc -g -O2"
+ CXX="g++ -g -O2"
+ LINKER="g++ -g"
+ LLVMCONFIG="/home/users/pkuchugov/libs/clang/bin/llvm-config"
+# for parallel programs
+ PCC="mpicc -g -O2 -fopenmp"
+ PCXX="mpicxx -g -O2 -fopenmp"
+ PFORT="mpif77 -g -O2 -fopenmp"
+ PLINKER="mpicxx -g -fopenmp"
+ PFLINKER="mpif77 -g -fopenmp"
+# CUDA_PATH="/s/ls4/sw/cuda/11.4"
+# ADD_LIBS="-L/s/ls4/sw/cuda/11.4/lib64"
+# NVCC="$CUDA_PATH/bin/nvcc -g -O2 -arch=sm_37 -DHAVE_EXPLICIT_CAST -DPGI_COMPILE_BITCODE"
+# PGI_PATH=""
+# NVFORT=""
+# launch settings
+ dvmcopy=1
+ dvmrun="kiae.run"
+ queuemode="hpc4-3d"
+ maxtime="2400"
+# DVMH options for default preset
+ DVMH_PPN=24
+ DVMH_NUM_THREADS=1
+ DVMH_NUM_CUDAS=0
+# machine configuration for more predefined presets
+# CPUS_PER_NODE=24
+# CUDAS_PER_NODE=6
+ 

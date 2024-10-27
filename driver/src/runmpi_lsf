@@ -1,0 +1,32 @@
+#!/bin/sh
+
+. dvm_utils.sh
+
+npp="$1"
+shift
+
+list_nodes=$( printf '%s\n' "$DVMH_PPN" | tr "," " " | wc -w )
+if [ $list_nodes -gt 1 ]; then
+    echo "Error: DVMH_PPN list is too long. Maximum length is 1 (ProcPerNode)."
+    exit 1
+fi
+
+ppn=20
+if [ ! -z "$DVMH_PPN" ]; then
+	if [ $DVMH_PPN -gt 0 ]; then
+		ppn=$DVMH_PPN
+	fi
+fi
+
+exclusive=0
+if [ ! -z "$DVMH_EXCLUSIVE" ]; then
+	if [ $DVMH_EXCLUSIVE -gt 0 ]; then
+		exclusive=1
+	fi
+fi
+
+if [ $exclusive -gt 0 ]; then
+	do_cmd mpisubmit-dvm.pl -p $npp -t $ppn -gpu=$exclusive "$@"
+else
+	do_cmd mpisubmit-dvm.pl -p $npp -t $ppn "$@"
+fi

@@ -1,0 +1,16 @@
+#For pop-os PLATFORM
+# for DVM tools
+ CC='gcc -g -O2'
+ CXX='g++ -g -O2'
+ LINKER='g++ -g'
+ LLVMCONFIG='llvm-config-15'
+# for parallel programs
+ PCC='mpicc -fno-lto -g -O2 -fopenmp'
+ PCXX='mpic++ -fno-lto -g -O2 -fopenmp'
+ PFORT='mpif90 -fno-lto -g -O2 -fopenmp'
+ PLINKER='mpic++ -fno-lto -g -fopenmp'
+ PFLINKER='mpif90 -fno-lto -g -fopenmp'
+ ADD_LIBS=''
+ CUDA_PATH=''
+# launch settings
+ dvmrun='runmpi'

@@ -1,0 +1,38 @@
+#!/bin/sh
+
+. dvm_utils.sh
+
+npp="$1"
+shift
+taskname="$1"
+
+list_nodes=$( printf '%s\n' "$DVMH_PPN" | tr "," " " | wc -w )
+if [ $list_nodes -gt 1 ]; then
+    echo "Error: DVMH_PPN list is too long. Maximum length is 1 (ProcPerNode)."
+    exit 1
+fi
+
+host_procs=$npp
+if [ $list_nodes -gt 0 ]; then
+    host_procs=$( printf '%s\n' "$DVMH_PPN" | tr "," " " | awk '{print $1;}' )
+fi
+
+mkdir "$taskname.1"
+touch "$taskname.1/output"
+touch "$taskname.1/error"
+echo "Task $taskname.1"
+task_file="$taskname.task"
+curdir=$( pwd | sed 's_home_s\/ls4_g' )
+echo "#!/bin/sh">$task_file
+echo "#SBATCH -n ${npp}">>$task_file
+echo "#SBATCH --ntasks-per-node=${host_procs}">>$task_file
+echo "#SBATCH -p ${queuemode}">>$task_file
+echo "#SBATCH -t ${maxtime}">>$task_file
+echo "#SBATCH -e ${taskname}.1/error">>$task_file
+echo "#SBATCH -o ${taskname}.1/output">>$task_file
+echo "module load gcc/default openmpi/default">>$task_file
+echo "export LD_LIBRARY_PATH='/s/ls4/sw/gcc/10.2.0/lib64:/usr/lib64:/s/ls4/users/pkuchugov/libs/zlib/lib:/s/ls4/users/pkuchugov/libs/gsl/lib:/s/ls4/users/pkuchugov/libs/hypre/lib:/s/ls4/users/pkuchugov/libs/yaml/lib:\$LD_LIBRARY_PATH'">>$task_file
+echo "cd ${curdir}">>$task_file
+echo "\$MPIRUN -np ${npp} ${curdir}/$@">>$task_file
+chmod +x $task_file
+do_cmd sbatch "$taskname.task"

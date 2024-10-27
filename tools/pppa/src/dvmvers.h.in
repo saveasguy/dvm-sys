@@ -1,0 +1,2 @@
+#define VERS "@DVM_VERSION@"
+#define PLATFORM "@DVM_PLATFORM_STRING@"

@@ -1,0 +1,39 @@
+#!/bin/sh
+
+export DVMVERS='@DVM_VERSION@'
+export PLATFORM='@DVM_PLATFORM_STRING@'
+
+export optcconv="$OPTCCONV"
+if [ -z "$optcconv" ]; then export optcconv='@DVM_C_CONVERTER_FLAGS@'; fi
+export optfconv="$OPTFCONV"
+if [ -z "$optfconv" ]; then export optfconv='@DVM_Fortran_CONVERTER_FLAGS@'; fi
+
+if [ -z "$PCC" ]; then export PCC='"@DVM_C_COMPILER@" @DVM_C_COMPILE_FLAGS@ @DVM_OpenMP_C_FLAGS@'; fi
+export PCC="$PCC @DVM_Fortran_NAMING_MACROS@"
+if [ -z "$PCXX" ]; then export PCXX='"@DVM_CXX_COMPILER@" @DVM_CXX_COMPILE_FLAGS@ @DVM_OpenMP_CXX_FLAGS@'; fi
+export PCXX="$PCXX @DVM_Fortran_NAMING_MACROS@"
+if [ -z "$PFORT" ]; then export PFORT='"@DVM_Fortran_COMPILER@" @DVM_Fortran_COMPILE_FLAGS@ @DVM_OpenMP_Fortran_FLAGS@'; fi
+@DVM_CUDA_FLAGS_IF_ENABLED@
+
+export PLINKER='"@DVM_C_COMPILER@" @DVM_CXX_LINK_FLAGS@ @DVM_OpenMP_CXX_FLAGS@'
+export PFLINKER='"@DVM_Fortran_COMPILER@" @DVM_Fortran_LINK_FLAGS@ @DVM_OpenMP_Fortran_FLAGS@'
+export Pld='"@CMAKE_LINKER@"'
+export CUDA_LIB=''
+export ADD_LIBS="$ADD_LIBS @DVM_WINAPI_LIBRARIES@"
+
+export dvmwait="$dvmwait"
+if [ "$dvmwait" != 0 -a "$dvmwait" != 1 ]; then export dvmwait=0; fi
+export dvmsave="$dvmsave"
+if [ "$dvmsave" != 0 -a "$dvmsave" != 1 ]; then export dvmsave=0; fi
+export dvmshow="$dvmshow"
+if [ "$dvmshow" != 0 -a "$dvmshow" != 1 ]; then export dvmshow=0; fi
+
+export dvmrun='@DVM_EXEC@'
+export flib='@DVM_Fortran_LIBRARIES@'
+export OPTIONCHAR='-'
+export dvmpar='@DVM_DIR_NATIVE@\par\.rel'
+export usrpar=''
+export dvmout='off'
+export Pred_sys='@DVM_DIR_NATIVE@\par\Predictor.par'
+export Pred_vis='start'
+export Doc_vis='start'

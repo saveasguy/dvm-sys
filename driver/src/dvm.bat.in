@@ -1,0 +1,28 @@
+@Echo Off
+
+set DVMDIR=@DVM_DIR_NATIVE@
+
+rem --------------- One can customize compiler options:
+rem set "PCC="@DVM_C_COMPILER@" @DVM_C_COMPILE_FLAGS@ @DVM_OpenMP_C_FLAGS@" :: C compiler
+rem set "PCXX="@DVM_CXX_COMPILER@" @DVM_CXX_COMPILE_FLAGS@ @DVM_OpenMP_CXX_FLAGS@" :: C++ compiler
+rem set "PFORT="@DVM_Fortran_COMPILER@" @DVM_Fortran_COMPILE_FLAGS@ @DVM_OpenMP_Fortran_FLAGS@" :: Fortran compiler
+
+rem --------------- One can add libraries (additional linker flags):
+rem set ADD_LIBS=
+
+rem --------------- DVMH options:
+rem set "DVMH_PPN=" :: Number of processes per node@DVMH_NUM_THREADS_IF_ENABLED@@DVMH_NUM_CUDAS_IF_ENABLED@
+rem set "DVMH_CPU_PERF=" :: Performance of all cores of CPU per process
+rem set "DVMH_CUDAS_PERF=" :: Performance of each GPU per device
+rem set "DVMH_NO_DIRECT_COPY=0" :: Use standard cudaMemcpy functions instead direct copy with GPU
+rem set "DVMH_SPECIALIZE_RTC=1" :: Use specialization aligorithm to reduce CUDA kernel's resources / or compile kernels during execution without changes
+
+rem --------------- Debugging options:
+rem set "DVMH_LOGLEVEL=1" :: Levels of debugging: 1 - errors only, 2 - warning, 3 - info, 4 - debug, 5 - trace
+rem set "DVMH_LOGFILE=dvmh_%%d.log" :: Log file name for each process
+rem set "DVMH_COMPARE_DEBUG=0" :: An alternative way to turn comparative debugging mode on
+rem set "dvmsave=0" :: Save convertation results
+rem set "dvmshow=0" :: Show executed commands
+
+call "%DVMDIR%\bin\dvm_drv.bat" %*
+

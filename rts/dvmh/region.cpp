@@ -16,6 +16,7 @@
 #include "dvmh_stat.h"
 #include "loop.h"
 #include "util.h"
+#include <sys/socket.h>
 
 namespace libdvmh {
 
@@ -963,6 +964,54 @@ void DvmhRegion::finish() {
     if (compareDebug) {
         for (std::map<DvmhData *, DvmhRegionData *>::iterator it = datas.begin(); it != datas.end(); it++)
             compareDatas(it->second, it->second->getOutPieces());
+    }
+    if (devicesCount == 1 && dvmhSettings.onTheFlyDebug) {
+        for (auto &&[data, rdata] : datas) {
+            if (data->getRank() != 1)
+                continue;
+            DvmhPieces *pieces = rdata->getInPieces();
+            if (pieces->getCount() != 1)
+                continue;
+            const Interval *interval = pieces->getPiece(0);
+            auto *ptr = reinterpret_cast<std::byte *>(
+                data->getBuffer(0)->getNaturalBase(true));
+            auto intervalBegin = interval->begin() * data->getTypeSize();
+            auto intervalEnd = interval->end() * data->getTypeSize();
+            auto size = data->getTypeSize() + intervalEnd - intervalBegin;
+            std::vector<std::byte> buffer(size);
+            if (dvmhSettings.onTheFlyDebug == 1) {
+                int bytesRead = 0;
+                bool failed = false;
+                do {
+                    int res = recv(dvmhSettings.clientSocket,
+                                   buffer.data() + bytesRead, size - bytesRead, 0);
+                    if (res == -1) {
+                        failed = true;
+                        dvmh_log(NFERROR, strerror(errno));
+                        break;
+                    }
+                    bytesRead += res;
+                } while (size > bytesRead);
+                if (!failed) {
+                    for (int i = intervalBegin; i <= intervalEnd; ++i) {
+                        if (ptr[i] != buffer[i - intervalBegin]) {
+                            dvmh_log(NFERROR, "difference in %s[%d]\n", rdata->getName(), i);
+                        }
+                    }
+                }
+            } else if (dvmhSettings.onTheFlyDebug == 2) {
+                int bytesSent = 0;
+                do {
+                    int res = send(dvmhSettings.clientSocket,
+                                   ptr + bytesSent - intervalBegin, size - bytesSent, 0);
+                    if (res == -1) {
+                        dvmh_log(NFERROR, strerror(errno));
+                        break;
+                    }
+                    bytesSent += res;
+                } while (size > bytesSent);
+            }
+        }
     }
     persistentInfo->incrementExecCount();
     phase = rpFinished;

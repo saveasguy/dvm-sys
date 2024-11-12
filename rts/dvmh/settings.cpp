@@ -107,6 +107,9 @@ void AdjustableSettings::setDefault() {
     schedFile = "Scheme.dvmh";
     reduceDependencies = false;
     compareDebug = false;
+    onTheFlyDebug = 0;
+    serverSocket = 0;
+    clientSocket = 0;
     allowAsync = false;
     compareFloatsEps = FLT_EPSILON * 1000.0f;
     compareDoublesEps = DBL_EPSILON * 10000.0;
@@ -358,6 +361,7 @@ std::vector<ValueSetReport> AdjustableSettings::loadFromEnv() {
     setValueFromEnv(res, "DVMH_SCHED_FILE", &schedFile, isNonEmpty<std::string>);
     setValueFromEnv(res, "DVMH_REDUCE_DEPS", &reduceDependencies);
     setValueFromEnv(res, "DVMH_COMPARE_DEBUG", &compareDebug);
+    setValueFromEnv(res, "DVMH_ON_THE_FLY_DEBUG", &onTheFlyDebug);
     setValueFromEnv(res, "DVMH_ALLOW_ASYNC", &allowAsync);
     setValueFromEnv(res, "DVMH_COMPARE_FLOATS_EPS", &compareFloatsEps, isNonNegative<float>);
     setValueFromEnv(res, "DVMH_COMPARE_DOUBLES_EPS", &compareDoublesEps, isNonNegative<double>);

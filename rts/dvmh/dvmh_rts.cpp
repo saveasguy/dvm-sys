@@ -31,6 +31,8 @@
 #endif
 
 #ifndef WIN32
+#include <netinet/in.h>
+#include <sys/socket.h>
 #include <unistd.h>
 #ifndef __CYGWIN__
 #include <execinfo.h>
@@ -945,6 +947,66 @@ static void initDevices(int procCount, int myGlobalRank, int myNodeIndex, int my
         DvmhLogger::setThreadName("main");
 }
 
+struct OnTheFlyDebugInitDefer {
+    OnTheFlyDebugInitDefer(int &onTheFlyDebugFlag, int sock) :
+        onTheFlyDebug(onTheFlyDebugFlag), sockFD(sock) {}
+
+    ~OnTheFlyDebugInitDefer() {
+        onTheFlyDebug = 0;
+        close(sockFD);
+    }
+
+private:
+    int &onTheFlyDebug;
+    int sockFD;
+};
+
+void onTheFlyDebugInit() {
+    if (!dvmhSettings.onTheFlyDebug)
+        return;
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
+        dvmh_log(NFERROR, strerror(errno));
+        return;
+    }
+    OnTheFlyDebugInitDefer defer{dvmhSettings.onTheFlyDebug, sock};
+    sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(13245);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    if (dvmhSettings.onTheFlyDebug == 1) {
+        dvmhSettings.serverSocket = sock;
+        int res = bind(sock, (sockaddr *)&serverAddress, sizeof(serverAddress));
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            return;
+        }
+        res = listen(sock, 5);
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            return;
+        }
+        int clientSocket = accept(sock, nullptr, nullptr);
+        if (clientSocket == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            return;
+        }
+        dvmhSettings.clientSocket = clientSocket;
+        return;
+    }
+    if (dvmhSettings.onTheFlyDebug == 2) {
+        dvmhSettings.clientSocket = sock;
+        int res = connect(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            return;
+        }
+        return;
+    }
+    dvmh_log(FATAL, "Unknown on-the-fly debug setup!");
+}
+
 void dvmhInitialize() {
     checkInternal2(!inited, "LibDVMH is already initialized");
 
@@ -1148,13 +1210,29 @@ void dvmhInitialize() {
         }
     }
 
+    onTheFlyDebugInit();
+
     inited = true;
     dvmh_barrier();
     timerBase = dvmhTime();
     DvmhModuleInitializer::executeInit();
 }
 
+void onTheFlyDebugFinalize() {
+    switch (dvmhSettings.onTheFlyDebug) {
+    case 1: {
+        close(dvmhSettings.serverSocket);
+        break;
+    }
+    case 2: {
+        close(dvmhSettings.clientSocket);
+        break;
+    }
+    }    
+}
+
 void dvmhFinalize(bool cleanup) {
+    onTheFlyDebugFinalize();
     stdioFinish();
     // Generating output information
     LogLevel statLevel = DEBUG;

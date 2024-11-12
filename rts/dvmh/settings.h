@@ -51,6 +51,9 @@ public:
     std::string schedFile;
     bool reduceDependencies;
     bool compareDebug;
+    int onTheFlyDebug;
+    int serverSocket;
+    int clientSocket;
     bool allowAsync;
     float compareFloatsEps;
     double compareDoublesEps;

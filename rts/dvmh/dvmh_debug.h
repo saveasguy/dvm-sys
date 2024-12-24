@@ -32,4 +32,7 @@ public:
     std::string description();
 };
 
+void onTheFlyDebugInit();
+void onTheFlyDebugFinalize();
+
 }

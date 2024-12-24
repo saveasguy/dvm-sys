@@ -8,6 +8,11 @@
 #include "dvmh_rts.h"
 #include "loop.h"
 
+#ifndef WIN32
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
 #include <cstring>
 #include <stdlib.h>
 #include <sstream>
@@ -79,6 +84,102 @@ std::string DvmhDebugReduction::description() {
         default: assert(false);
     }
 }
+
+#ifndef WIN32
+
+struct OnTheFlyDebugInitDefer {
+    OnTheFlyDebugInitDefer(int &onTheFlyDebugFlag, int sock) :
+        onTheFlyDebug(onTheFlyDebugFlag), sockFD(sock), error(false) {}
+
+    void set_error() { error = true; }
+
+    ~OnTheFlyDebugInitDefer() {
+        if (error) {
+            onTheFlyDebug = 0;
+            close(sockFD);
+        }
+    }
+
+private:
+    int &onTheFlyDebug;
+    int sockFD;
+    bool error;
+};
+
+void onTheFlyDebugInit() {
+    if (!dvmhSettings.onTheFlyDebug)
+        return;
+
+    int sock = socket(AF_INET, SOCK_STREAM, 0);
+    if (sock == -1) {
+        dvmh_log(NFERROR, strerror(errno));
+        return;
+    }
+    OnTheFlyDebugInitDefer defer{dvmhSettings.onTheFlyDebug, sock};
+    sockaddr_in serverAddress;
+    serverAddress.sin_family = AF_INET;
+    serverAddress.sin_port = htons(13245);
+    serverAddress.sin_addr.s_addr = INADDR_ANY;
+    if (dvmhSettings.onTheFlyDebug == 1) {
+        dvmhSettings.serverSocket = sock;
+        int res = bind(sock, (sockaddr *)&serverAddress, sizeof(serverAddress));
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            defer.set_error();
+            return;
+        }
+        res = listen(sock, 5);
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            defer.set_error();
+            return;
+        }
+        int clientSocket = accept(sock, nullptr, nullptr);
+        if (clientSocket == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            defer.set_error();
+            return;
+        }
+        dvmhSettings.clientSocket = clientSocket;
+        return;
+    }
+    if (dvmhSettings.onTheFlyDebug == 2) {
+        dvmhSettings.clientSocket = sock;
+        int res = connect(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
+        if (res == -1) {
+            dvmh_log(NFERROR, strerror(errno));
+            defer.set_error();
+            return;
+        }
+        return;
+    }
+    dvmh_log(FATAL, "Unknown on-the-fly debug setup!");
+}
+
+void onTheFlyDebugFinalize() {
+    switch (dvmhSettings.onTheFlyDebug) {
+    case 1: {
+        close(dvmhSettings.serverSocket);
+        break;
+    }
+    case 2: {
+        close(dvmhSettings.clientSocket);
+        break;
+    }
+    }
+}
+
+#else
+
+void onTheFlyDebugInit() {
+    if (!dvmhSettings.onTheFlyDebug)
+        return;
+    dvmh_log(FATAL, "On-the-fly debug is not supported on this platform!");
+}
+
+void onTheFlyDebugFinalize() {}
+
+#endif
 
 }
 

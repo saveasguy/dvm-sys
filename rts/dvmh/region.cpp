@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <vector>
 
 #include "distrib.h"
@@ -15,6 +16,7 @@
 #include "dvmh_rts.h"
 #include "dvmh_stat.h"
 #include "loop.h"
+#include "mps.h"
 #include "util.h"
 #include <sys/socket.h>
 
@@ -959,20 +961,100 @@ void DvmhRegion::compareDatas(DvmhRegionData *rdata, DvmhPieces *area) {
     }
 }
 
+#define SEEN_ERROR(fmt, v1, v2) do { \
+    dvmh_log(NFERROR, "Results doesn't match: " fmt " vs " fmt "\n", v1, v2); \
+} while (0)
+
+#define COMPARE_INTS(T, fmt) if (typeSize == sizeof(T)) { \
+    const T &v1 = *(T *)el1; \
+    const T &v2 = *(T *)el2; \
+    if (!(v1 == v2)) \
+        SEEN_ERROR("%" fmt, (v1), (v2)); \
+}
+
+#define COMPARE_FLOATS(T, eps, prec, fmt) if (typeSize == sizeof(T)) { \
+    const T &v1 = *(T *)el1; \
+    const T &v2 = *(T *)el2; \
+    if (!(eps > 0 ? std::abs(v1 - v2) < eps || std::abs(v1 - v2) / (std::max(eps * eps, (T)std::abs(v1))) < eps : v1 == v2)) \
+        SEEN_ERROR("%.*" fmt, (prec, v1), (prec, v2)); \
+}
+
+#define COMPARE_COMPLEXS(T, eps, prec, fmt) if (typeSize == sizeof(T) * 2) { \
+    bool ok = true; \
+    const T &v1re = *(T *)el1; \
+    const T &v2re = *(T *)el2; \
+    const T &v1im = *((T *)el1 + 1); \
+    const T &v2im = *((T *)el2 + 1); \
+    if (eps > 0) { \
+        T diff = sqrt((v1re - v2re) * (v1re - v2re) + (v1im - v2im) * (v1im - v2im)); \
+        T len = sqrt(v1re * v1re + v1im * v1im); \
+        if (!(diff < eps || diff / std::max(eps * eps, len) < eps)) \
+            ok = false; \
+    } else { \
+        if (!(v1re == v2re && v1im == v2im)) \
+            ok = false; \
+    } \
+    if (!ok) \
+        SEEN_ERROR("(%.*" fmt ", %.*" fmt ")", (prec, v1re, prec, v1im), (prec, v2re, prec, v2im)); \
+}
+
+static void compareArrays(DvmhData::TypeType type, DvmType typeSize, const void *aLHS, const void *aRHS, int len) {
+    const std::byte *LHS = aLHS;
+    const std::byte *RHS = aRHS;
+    float floatEps = dvmhSettings.compareFloatsEps;
+    double doubleEps = dvmhSettings.compareDoublesEps;
+    long double longDoubleEps = dvmhSettings.compareLongDoublesEps;
+    int floatPrec = floatEps > 0 ? std::max(5, std::min(8, int(0.5 - std::log10(floatEps)) + 1)) : 8;
+    int doublePrec = doubleEps > 0 ? std::max(5, std::min(16, int(0.5 - std::log10(doubleEps)) + 1)) : 16;
+    int longDoublePrec = longDoubleEps > 0 ? std::max(5, std::min(34, int(0.5 - std::log10(longDoubleEps)) + 1)) : 34;
+    for (int i = 0; i < len; ++i) {
+        void *el1 = LHS + i * typeSize;
+        void *el2 = RHS + i * typeSize;
+        switch (type) {
+            case DvmhData::ttInteger:
+                COMPARE_INTS(char, "d")
+                else COMPARE_INTS(short, "d")
+                else COMPARE_INTS(int, "d")
+                else COMPARE_INTS(long, "ld")
+                else COMPARE_INTS(long long, "lld")
+                break;
+            case DvmhData::ttFloating:
+                COMPARE_FLOATS(float, floatEps, floatPrec, "e")
+                else COMPARE_FLOATS(double, doubleEps, doublePrec, "e")
+                else COMPARE_FLOATS(long double, longDoubleEps, longDoublePrec, "Le")
+                break;
+            case DvmhData::ttComplex:
+                COMPARE_COMPLEXS(float, floatEps, floatPrec, "e")
+                else COMPARE_COMPLEXS(double, doubleEps, doublePrec, "e")
+                else COMPARE_COMPLEXS(long double, longDoubleEps, longDoublePrec, "Le")
+                break;
+            default:
+                assert(false);
+        }
+    }
+}
+
+#undef DROP_PARENS
+#undef SEEN_ERROR
+#undef COMPARE_INTS
+#undef COMPARE_FLOATS
+#undef COMPARE_COMPLEXS
+
 void DvmhRegion::finish() {
     checkInternal(phase == rpExecution);
     if (compareDebug) {
         for (std::map<DvmhData *, DvmhRegionData *>::iterator it = datas.begin(); it != datas.end(); it++)
             compareDatas(it->second, it->second->getOutPieces());
     }
-    if (devicesCount == 1 && dvmhSettings.onTheFlyDebug) {
+    if (devicesCount == 1 && dvmhSettings.onTheFlyDebug && rootMPS && rootMPS->getCommRank() == 0) {
         for (auto &&[data, rdata] : datas) {
             if (data->getRank() != 1)
                 continue;
-            DvmhPieces *pieces = rdata->getInPieces();
+            DvmhPieces *pieces = rdata->getOutPieces();
             if (pieces->getCount() != 1)
                 continue;
             const Interval *interval = pieces->getPiece(0);
+            std::cout << interval->begin() << " " << interval->end() << std::endl;
             auto *ptr = reinterpret_cast<std::byte *>(
                 data->getBuffer(0)->getNaturalBase(true));
             auto intervalBegin = interval->begin() * data->getTypeSize();
@@ -993,11 +1075,7 @@ void DvmhRegion::finish() {
                     bytesRead += res;
                 } while (size > bytesRead);
                 if (!failed) {
-                    for (int i = intervalBegin; i <= intervalEnd; ++i) {
-                        if (ptr[i] != buffer[i - intervalBegin]) {
-                            dvmh_log(NFERROR, "difference in %s[%d]\n", rdata->getName(), i);
-                        }
-                    }
+                    compareArrays(data->getTypeType(), data->getTypeSize(), ptr, buffer.data(), buffer.size());
                 }
             } else if (dvmhSettings.onTheFlyDebug == 2) {
                 int bytesSent = 0;

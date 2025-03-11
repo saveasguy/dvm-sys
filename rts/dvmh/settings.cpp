@@ -107,9 +107,8 @@ void AdjustableSettings::setDefault() {
     schedFile = "Scheme.dvmh";
     reduceDependencies = false;
     compareDebug = false;
-    onTheFlyDebug = 0;
-    serverSocket = 0;
-    clientSocket = 0;
+    onTheFlyDebug = false;
+    childDebugProcess = false;
     allowAsync = false;
     compareFloatsEps = FLT_EPSILON * 1000.0f;
     compareDoublesEps = DBL_EPSILON * 10000.0;

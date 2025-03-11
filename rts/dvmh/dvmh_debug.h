@@ -32,7 +32,8 @@ public:
     std::string description();
 };
 
-void onTheFlyDebugInit();
-void onTheFlyDebugFinalize();
+void runOnTheFlyDebugProcess(int argc, char **argv, MPI_Comm comm);
+
+void onTheFlyDebugFinishRegion(std::map<DvmhData *, DvmhRegionData *> &datas);
 
 }

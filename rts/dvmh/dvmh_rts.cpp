@@ -1100,7 +1100,7 @@ void dvmhInitialize() {
             varList += (varList.empty() ? "" : ", ") + *it;
         dvmh_log(WARNING, "Unrecognized DVMH environment variables found (check the spelling): %s", varList.c_str());
     }
-    if (!dvmhSettings.procGrid.empty()) {
+    if (!dvmhSettings.procGrid.empty() && !dvmhSettings.childDebugProcess) {
         for (int i = 0; i < (int)dvmhSettings.procGrid.size(); i++)
             checkInternal2(dvmhSettings.procGrid[i] == rootMPS->getAxis(i + 1).procCount, "Processor grid mismatch");
     }
@@ -1149,10 +1149,6 @@ void dvmhInitialize() {
         }
     }
 
-    if (rootMPS && rootMPS->getCommRank() == 0) {
-        onTheFlyDebugInit();
-    }
-
     inited = true;
     dvmh_barrier();
     timerBase = dvmhTime();
@@ -1160,9 +1156,6 @@ void dvmhInitialize() {
 }
 
 void dvmhFinalize(bool cleanup) {
-    if (rootMPS && rootMPS->getCommRank() == 0) {
-        onTheFlyDebugFinalize();
-    }
     stdioFinish();
     // Generating output information
     LogLevel statLevel = DEBUG;

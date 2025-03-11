@@ -22,6 +22,8 @@
 #include "loop.h"
 #include "mps.h"
 
+#include <mpi.h>
+
 #if defined(__APPLE__)
 #include <crt_externs.h>
 static char **environ = *_NSGetEnviron();
@@ -343,15 +345,33 @@ static void dvmhInitInternal(DvmType flags, int *pArgc, char ***pArgv, bool acce
         checkError2(userArgv[i], "Command-line arguments are corrupted");
     checkError2(userArgv[userArgc] == 0, "Command-line arguments are corrupted");
 #ifndef NO_DVM
+    MPI_Comm parentComm;
+    MPI_Comm_get_parent(&parentComm);
+    // If the process has parent, we consider it debug process.
+    dvmhSettings.childDebugProcess = parentComm != MPI_COMM_NULL;
     char *args = 0;
     const char *envV = getenv("DVMH_ARGS");
     if (envV && *envV) {
         args = new char[strlen(envV) + 1];
         strcpy(args, envV);
+        if (dvmhSettings.childDebugProcess) {
+            const char deactCpArg[] = " -deact cp";
+            char *debugProcessArgs = new char[strlen(args) + sizeof(deactCpArg)];
+            strcpy(debugProcessArgs, args);
+            strcpy(debugProcessArgs, deactCpArg);
+            delete[] args;
+            args = debugProcessArgs;
+        }
     } else {
-        args = new char[4];
-        strcpy(args, "-cp");
-        args[0] = Minus;
+        if (dvmhSettings.childDebugProcess) {
+            const char deactCpArg[] = "-deact cp";
+            args = new char[sizeof(deactCpArg)];
+            strcpy(args, deactCpArg);
+        } else {
+            args = new char[4];
+            strcpy(args, "-cp");
+            args[0] = Minus;
+        }
     }
     assert(args);
     std::string argsSave = args;
@@ -400,6 +420,9 @@ static void dvmhInitInternal(DvmType flags, int *pArgc, char ***pArgv, bool acce
     delete[] dvmArgv;
 #endif
     dvmhInitialize();
+    if (!dvmhSettings.childDebugProcess && dvmhSettings.onTheFlyDebug) {
+        runOnTheFlyDebugProcess(*pArgc, *pArgv, comm);
+    }
     for (int i = 0; i < userArgc; i++)
         dvmh_log(DEBUG, "Command-line argument #%d - '%s'", i, userArgv[i]);
 

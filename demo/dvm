@@ -1,7 +1,7 @@
 #!/bin/sh
 
 dvmdir='/home/saveasguy/Documents/src/dvm_sys'
-export dvmbuild='Version 5.0, platform pop-os, build 14'
+export dvmbuild='Version 5.0, platform pop-os, build 121'
 
 #--------------- One can customize compiler options:
 # export PCC='mpicc -fno-lto -g -O2 -fopenmp' # C compiler

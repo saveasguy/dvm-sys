@@ -8,12 +8,10 @@
 #include "dvmh_rts.h"
 #include "loop.h"
 
-#ifndef WIN32
-#include <netinet/in.h>
-#include <sys/socket.h>
-#endif
+#include <mpi/mpi.h>
 
 #include <cstring>
+#include <iostream>
 #include <stdlib.h>
 #include <sstream>
 
@@ -41,6 +39,8 @@ std::pair<void*, DvmhDebugReduction*> currentWriting = std::make_pair((void*)NUL
 ReductionsMap currentReductions;
 MappingsMap currentMappings;
 RedGroupRef currentRedGroup;
+
+MPI_Comm onTheFlyDebugIntercomm = MPI_COMM_NULL;
 
 std::vector<DebugLoopData> debugLoopsStack;
 
@@ -85,104 +85,33 @@ std::string DvmhDebugReduction::description() {
     }
 }
 
-#ifndef WIN32
-
-struct OnTheFlyDebugInitDefer {
-    OnTheFlyDebugInitDefer(int &onTheFlyDebugFlag, int sock) :
-        onTheFlyDebug(onTheFlyDebugFlag), sockFD(sock), error(false) {}
-
-    void set_error() { error = true; }
-
-    ~OnTheFlyDebugInitDefer() {
-        if (error) {
-            onTheFlyDebug = 0;
-            close(sockFD);
-        }
-    }
-
-private:
-    int &onTheFlyDebug;
-    int sockFD;
-    bool error;
-};
-
-void onTheFlyDebugInit() {
-    if (!dvmhSettings.onTheFlyDebug)
-        return;
-
-    int sock = socket(AF_INET, SOCK_STREAM, 0);
-    if (sock == -1) {
-        dvmh_log(NFERROR, strerror(errno));
+void runOnTheFlyDebugProcess(int argc, char **argv, MPI_Comm comm) {
+    MPI_Comm parent;
+    MPI_Comm_get_parent(&parent);
+    if (parent != MPI_COMM_NULL) {
         return;
     }
-    OnTheFlyDebugInitDefer defer{dvmhSettings.onTheFlyDebug, sock};
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;
-    serverAddress.sin_port = htons(13245);
-    serverAddress.sin_addr.s_addr = INADDR_ANY;
-    if (dvmhSettings.onTheFlyDebug == 1) {
-        dvmhSettings.serverSocket = sock;
-        int res = bind(sock, (sockaddr *)&serverAddress, sizeof(serverAddress));
-        if (res == -1) {
-            dvmh_log(NFERROR, strerror(errno));
-            defer.set_error();
-            return;
-        }
-        res = listen(sock, 5);
-        if (res == -1) {
-            dvmh_log(NFERROR, strerror(errno));
-            defer.set_error();
-            return;
-        }
-        int clientSocket = accept(sock, nullptr, nullptr);
-        if (clientSocket == -1) {
-            dvmh_log(NFERROR, strerror(errno));
-            defer.set_error();
-            return;
-        }
-        dvmhSettings.clientSocket = clientSocket;
-        return;
-    }
-    if (dvmhSettings.onTheFlyDebug == 2) {
-        dvmhSettings.clientSocket = sock;
-        int res = connect(sock, (struct sockaddr *)&serverAddress, sizeof(serverAddress));
-        if (res == -1) {
-            dvmh_log(NFERROR, strerror(errno));
-            defer.set_error();
-            return;
-        }
-        return;
-    }
-    dvmh_log(FATAL, "Unknown on-the-fly debug setup!");
+    int err;
+    MPI_Comm_spawn(argv[0], argv, 1, MPI_INFO_NULL, 0, comm, &onTheFlyDebugIntercomm, &err);
 }
 
-void onTheFlyDebugFinalize() {
-    switch (dvmhSettings.onTheFlyDebug) {
-    case 1: {
-        close(dvmhSettings.serverSocket);
-        break;
-    }
-    case 2: {
-        close(dvmhSettings.clientSocket);
-        break;
-    }
+void onTheFlyDebugFinishRegion(std::map<DvmhData *, DvmhRegionData *> &datas) {
+    for (auto it = datas.begin(); it != datas.end(); ++it) {
+        DvmhData *data = it->first;
+        DvmhRegionData *regionData = it->second;
+        if (onTheFlyDebugIntercomm == MPI_COMM_NULL) {
+            MPI_Comm parent;
+            MPI_Comm_get_parent(&parent);
+            int parentProcNum;
+            MPI_Comm_size(parent, &parentProcNum);
+            
+
+        } else {
+        }
     }
 }
 
-#else
-
-void onTheFlyDebugInit() {
-    if (!dvmhSettings.onTheFlyDebug)
-        return;
-    dvmh_log(FATAL, "On-the-fly debug is not supported on this platform!");
 }
-
-void onTheFlyDebugFinalize() {}
-
-#endif
-
-}
-
 // Debug runtime API functions
 
 // Before writing to the variable

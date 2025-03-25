@@ -6,7 +6,9 @@
 #include "dvmh_log.h"
 #include "dvmh_data.h"
 #include "dvmh_rts.h"
+#include "dvmh_buffer.h"
 #include "loop.h"
+#include "distrib.h"
 
 #include <mpi/mpi.h>
 
@@ -99,14 +101,63 @@ void onTheFlyDebugFinishRegion(std::map<DvmhData *, DvmhRegionData *> &datas) {
     for (auto it = datas.begin(); it != datas.end(); ++it) {
         DvmhData *data = it->first;
         DvmhRegionData *regionData = it->second;
+        if (!regionData->hasOutPieces())
+            continue;
+
         if (onTheFlyDebugIntercomm == MPI_COMM_NULL) {
             MPI_Comm parent;
             MPI_Comm_get_parent(&parent);
             int parentProcNum;
             MPI_Comm_size(parent, &parentProcNum);
-            
-
+            const libdvmh::Interval *space = data->getSpace();
+            // DvmhBuffer *buf = tmpData.getBuffer(0);
+            // for (int i = 0; i < 1024; ++i) {
+            //     for (int j = 0; j < 1024; ++i) {
+            //         DvmType inds[2] = {i, j};
+            //         int element = buf->getElement<int>(inds);
+            //         std::cout << element << std::endl;
+            //     }
+            // }
+            // data->getBuffer(0)->
         } else {
+            std::cout << (allObjects.find(data) != allObjects.end()) << std::endl;
+            // data->createHeader();
+            // data->redistribute(data->getAlignRule()->getDistribRule());
+            data->getBuffer(0)->getDeviceAddr();
+            auto *h = data->getAnyHeader();
+            DvmType begin = 0;
+            DvmType end = 1024;
+            DvmType step = 1;
+            arrcpy_(h, &begin, &end, &step, h, &begin, &end, &step, NULL);
+            // int rank;
+            // MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            // int commSize;
+            // MPI_Comm_size(MPI_COMM_WORLD, &commSize);
+            // if (rank == 0)
+            //     std::cout << commSize << std::endl;
+            // const libdvmh::Interval *local = data->getLocalPart();
+            // int dataRank = data->getRank();
+            // int sendCount = 2 * dataRank;
+            // int recvCount = sendCount * commSize;
+            // DvmType *sendBuf = new DvmType[sendCount];
+            // for (int i = 0; i < dataRank; ++i) {
+            //     sendBuf[2 * i] = local[i].begin();
+            //     sendBuf[2 * i + 1] = local[i].end();
+            // }
+            // if (rank == 0) {
+            //     DvmType *recvBuf = new DvmType[recvCount];
+            //     MPI_Gather(sendBuf, sendCount, MPI_LONG, recvBuf, sendCount, MPI_LONG, 0, MPI_COMM_WORLD);
+            //     for (int i = 0; i < recvCount; ++i) {
+            //         std::cout << recvBuf[i] << " ";
+            //         if (i % 2) {
+            //             std::cout << std::endl;
+            //         }
+            //     }
+            //     delete[] recvBuf;
+            // } else {
+            //     MPI_Gather(sendBuf, sendCount, MPI_LONG, NULL, 0, MPI_LONG, 0, MPI_COMM_WORLD);
+            // }
+            // delete[] sendBuf;
         }
     }
 }

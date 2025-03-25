@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <cstring>
+#include <iostream>
 #include <algorithm>
 #include <set>
 
@@ -204,6 +205,7 @@ void DvmhData::addHeader(DvmType aHeader[], const void *base, bool owning) {
     aHeader[rank + 2] = (DvmType)base;
     headers.push_back(newHeader);
     updateHeaders();
+    std::cout << "Added header to " << this << std::endl;
 }
 
 bool DvmhData::hasHeader(DvmType aHeader[]) const {
@@ -215,6 +217,7 @@ bool DvmhData::hasHeader(DvmType aHeader[]) const {
 }
 
 bool DvmhData::removeHeader(DvmType aHeader[]) {
+    std::cout << "This happens\n";
     for (int i = 0; i < (int)headers.size(); i++) {
         if (headers[i].ptr == aHeader) {
             headers[i].ptr[0] = 0;
@@ -233,6 +236,7 @@ bool DvmhData::removeHeader(DvmType aHeader[]) {
 
 DvmType *DvmhData::getAnyHeader(bool nullIfNone) const {
     if (headers.empty()) {
+        std::cout << "No headers :( in " << this << std::endl;
         checkInternal2(nullIfNone, "No headers for the distributed array available");
         return 0;
     }

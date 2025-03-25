@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstdarg>
+#include <iostream>
 #include <stdint.h>
 #include <map>
 
@@ -686,6 +687,7 @@ extern "C" void dvmh_array_alloc_C(DvmType dvmDesc[], DvmType byteCount) {
         checkError2(false, "Either DVM-array usage violation or memory leak detected. Consider using another DVM-array variable or freeing dynamically allocated memory beforehand.");
         // TODO: Maybe we will devise some good scheme of memory leakage support and passing-by-value for dynamic arrays (as in C with pointers)
         DvmhData *data = obj->as<DvmhData>();
+        std::cout << "dvmhArray_alloc\n";
         data->removeHeader(dvmDesc);
         int rank = data->getRank();
         DynDeclDesc *desc = new DynDeclDesc(rank);
@@ -1406,6 +1408,7 @@ static void dvmCreateTiedDA(DvmhData *data) {
 #endif
     DvmType *dvmHeader = data->getAnyHeader();
     void *base = (void *)dvmHeader[rank + 2];
+    std::cout << "HGappend in dvmCreateTiedDA\n";
     data->removeHeader(dvmHeader);
     for (int i = 0; i < rank; i++) {
         dvmHeader[rank + 2 + i] = data->getAxisSpace(i + 1)[0];
@@ -1777,8 +1780,10 @@ extern "C" void dvmh_forget_header_(DvmType dvmDesc[]) {
     DvmhObject *obj = passOrGetOrCreateDvmh(dvmDesc[0], true);
     if (obj) {
         if (obj->is<DvmhData>()) {
-            if (obj->as<DvmhData>()->hasHeader(dvmDesc))
+            if (obj->as<DvmhData>()->hasHeader(dvmDesc)) {
+                std::cout << "HGappend in dvmh_forget_header\n";
                 obj->as<DvmhData>()->removeHeader(dvmDesc);
+            }
             else
                 checkError2(false, "Memory leak detected. Consider freeing dynamically allocated memory beforehand.");
         } else if (obj->is<DynDeclDesc>()) {
